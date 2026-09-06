@@ -129,6 +129,29 @@ function Home() {
         </div>
       </section>
 
+      {/* Vehicle Brands Preview */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="bg-navy-800 rounded-xl p-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Explore Vehicle Brands</h2>
+          <p className="text-gray-300 mb-6">
+            Discover modern vehicle brands, their electrical systems, and pricing information. Understanding different vehicle manufacturers helps you work with various automotive electrical systems.
+          </p>
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            {['Toyota', 'BMW', 'Mercedes', 'Tesla', 'Ford', 'Honda', 'Volkswagen', 'Hyundai'].map((brand, index) => (
+              <div key={index} className="bg-navy-700 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-electric-400 mb-1">{brand}</div>
+              </div>
+            ))}
+          </div>
+          <Link
+            to="/vehicles"
+            className="inline-block px-6 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors"
+          >
+            Explore All Brands →
+          </Link>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">

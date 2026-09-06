@@ -10,6 +10,7 @@ import WiringDiagrams from './pages/WiringDiagrams'
 import Quiz from './pages/Quiz'
 import Progress from './pages/Progress'
 import About from './pages/About'
+import Vehicles from './pages/Vehicles'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/about" element={<About />} />
+            <Route path="/vehicles" element={<Vehicles />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

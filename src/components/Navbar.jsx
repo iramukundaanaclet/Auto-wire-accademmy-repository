@@ -13,6 +13,7 @@ function Navbar() {
     { name: 'Diagrams', path: '/diagrams' },
     { name: 'Quiz', path: '/quiz' },
     { name: 'Progress', path: '/progress' },
+    { name: 'Vehicles', path: '/vehicles' },
   ]
 
   return (

@@ -611,7 +611,7 @@ function DiagnosticsLab() {
             {/* Mode Selection */}
             <div className="space-y-3 mb-6">
               <button
-                onClick={() => { setMultimeterMode('voltage'); setMultimeterReading(''); }}
+                onClick={() => setMultimeterMode('voltage')}
                 className={`w-full p-3 rounded-lg font-medium transition-colors ${
                   multimeterMode === 'voltage'
                     ? 'bg-electric-600 text-white'
@@ -621,7 +621,7 @@ function DiagnosticsLab() {
                 DC Voltage (V)
               </button>
               <button
-                onClick={() => { setMultimeterMode('resistance'); setMultimeterReading(''); }}
+                onClick={() => setMultimeterMode('resistance')}
                 className={`w-full p-3 rounded-lg font-medium transition-colors ${
                   multimeterMode === 'resistance'
                     ? 'bg-electric-600 text-white'
@@ -631,7 +631,7 @@ function DiagnosticsLab() {
                 Resistance (Ω)
               </button>
               <button
-                onClick={() => { setMultimeterMode('continuity'); setMultimeterReading(''); }}
+                onClick={() => setMultimeterMode('continuity')}
                 className={`w-full p-3 rounded-lg font-medium transition-colors ${
                   multimeterMode === 'continuity'
                     ? 'bg-electric-600 text-white'
