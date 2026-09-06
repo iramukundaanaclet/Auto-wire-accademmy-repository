@@ -1,8 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 function Vehicles() {
   const [selectedBrand, setSelectedBrand] = useState('all')
   const [selectedIndustry, setSelectedIndustry] = useState('all')
+  const [selectedCountry, setSelectedCountry] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedVehicle, setSelectedVehicle] = useState(null)
 
   const brands = [
     {
@@ -66,6 +70,7 @@ function Vehicles() {
       models: ['Golf', 'Passat', 'Tiguan', 'Atlas', 'ID.4']
     },
     {
+      id: 6,
       name: 'Hyundai',
       country: 'South Korea',
       industry: 'Automotive',
@@ -101,9 +106,10 @@ function Vehicles() {
   const countries = ['all', 'Japan', 'Germany', 'United States', 'South Korea']
 
   const filteredBrands = brands.filter(brand => {
-    const matchesBrand = selectedBrand === 'all' || brand.name.toLowerCase().includes(selectedBrand.toLowerCase())
+    const matchesBrand = selectedCountry === 'all' || brand.country === selectedCountry
     const matchesIndustry = selectedIndustry === 'all' || brand.industry === selectedIndustry
-    return matchesBrand && matchesIndustry
+    const matchesSearch = searchTerm === '' || brand.name.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesBrand && matchesIndustry && matchesSearch
   })
 
   return (
@@ -159,8 +165,8 @@ function Vehicles() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
             <select
-              value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-electric-500 focus:border-transparent"
             >
               {countries.map(country => (
@@ -175,6 +181,8 @@ function Vehicles() {
             <input
               type="text"
               placeholder="Search brands..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-electric-500 focus:border-transparent"
             />
           </div>
@@ -184,52 +192,61 @@ function Vehicles() {
       {/* Vehicle Brands Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredBrands.map((brand) => (
-          <div key={brand.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden">
-            <div className="h-48 bg-gray-200 relative">
+          <div key={brand.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border border-gray-100">
+            <div className="h-56 bg-gradient-to-br from-navy-600 to-navy-800 relative overflow-hidden">
               <img
                 src={brand.image}
                 alt={brand.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.style.display = 'none'
-                  e.target.parentElement.innerHTML = `
-                    <div class="h-48 bg-navy-600 flex items-center justify-center">
-                      <div class="text-center text-white p-4">
-                        <div class="text-2xl font-bold mb-2">${brand.name}</div>
-                        <div class="text-sm text-gray-300">${brand.country}</div>
-                      </div>
-                    </div>
-                  `
                 }}
               />
-              <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-xs font-semibold text-navy-900">
-                {brand.industry}
+              <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 to-transparent"></div>
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-bold text-white">{brand.name}</h3>
+                  <span className="px-3 py-1 bg-electric-500 text-white rounded-full text-xs font-semibold">
+                    {brand.industry}
+                  </span>
+                </div>
               </div>
             </div>
             <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-navy-900">{brand.name}</h3>
-                <span className="text-sm text-gray-500">{brand.country}</span>
-              </div>
-              <p className="text-gray-600 mb-4">{brand.description}</p>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <span className="text-sm text-gray-500">Price Range:</span>
-                  <div className="font-semibold text-navy-900">{brand.priceRange}</div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="text-sm text-gray-600">{brand.country}</span>
                 </div>
+                <div className="text-lg font-bold text-electric-600">{brand.priceRange}</div>
               </div>
+              <p className="text-gray-600 mb-4 text-sm line-clamp-2">{brand.description}</p>
               <div className="mb-4">
-                <span className="text-sm text-gray-500 mb-2 block">Popular Models:</span>
+                <span className="text-xs text-gray-500 mb-2 block font-medium">POPULAR MODELS:</span>
                 <div className="flex flex-wrap gap-2">
-                  {brand.models.map((model, index) => (
-                    <span key={index} className="px-2 py-1 bg-electric-100 text-electric-700 rounded-full text-xs">
+                  {brand.models.slice(0, 4).map((model, index) => (
+                    <span key={index} className="px-2 py-1 bg-navy-100 text-navy-700 rounded-full text-xs font-medium">
                       {model}
                     </span>
                   ))}
+                  {brand.models.length > 4 && (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                      +{brand.models.length - 4} more
+                    </span>
+                  )}
                 </div>
               </div>
-              <button className="w-full px-4 py-2 bg-electric-600 hover:bg-electric-700 text-white font-medium rounded-lg transition-colors">
-                View Details
+              <button
+                onClick={() => setSelectedVehicle(brand)}
+                className="w-full px-4 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center space-x-2"
+              >
+                <span>View Details</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           </div>
@@ -298,14 +315,116 @@ function Vehicles() {
           Understanding vehicle electrical systems is essential for modern automotive work. Start your learning journey with AutoWire Academy.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="px-8 py-3 bg-white hover:bg-gray-100 text-navy-900 font-semibold rounded-lg transition-colors">
+          <Link
+            to="/learn"
+            className="px-8 py-3 bg-white hover:bg-gray-100 text-navy-900 font-semibold rounded-lg transition-colors text-center"
+          >
             Start Learning
-          </button>
-          <button className="px-8 py-3 bg-navy-900 hover:bg-navy-800 text-white font-semibold rounded-lg transition-colors">
+          </Link>
+          <Link
+            to="/wiring-lab"
+            className="px-8 py-3 bg-navy-900 hover:bg-navy-800 text-white font-semibold rounded-lg transition-colors text-center"
+          >
             Explore Wiring Lab
-          </button>
+          </Link>
         </div>
       </div>
+
+      {/* Vehicle Details Modal */}
+      {selectedVehicle && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedVehicle(null)}>
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="relative">
+              <div className="h-64 bg-gradient-to-br from-navy-600 to-navy-800 relative overflow-hidden">
+                <img
+                  src={selectedVehicle.image}
+                  alt={selectedVehicle.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none'
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy-900/90 to-transparent"></div>
+                <button
+                  onClick={() => setSelectedVehicle(null)}
+                  className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                <div className="absolute bottom-6 left-6 right-6">
+                  <h2 className="text-4xl font-bold text-white mb-2">{selectedVehicle.name}</h2>
+                  <div className="flex items-center space-x-4">
+                    <span className="px-3 py-1 bg-electric-500 text-white rounded-full text-sm font-semibold">
+                      {selectedVehicle.industry}
+                    </span>
+                    <span className="text-white/80 text-sm flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {selectedVehicle.country}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h3 className="text-lg font-semibold text-navy-900 mb-4">About This Brand</h3>
+                  <p className="text-gray-600 mb-6">{selectedVehicle.description}</p>
+                  <div className="bg-navy-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-gray-600">Price Range</span>
+                      <span className="font-bold text-electric-600">{selectedVehicle.priceRange}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Country of Origin</span>
+                      <span className="font-semibold text-navy-900">{selectedVehicle.country}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-navy-900 mb-4">Popular Models</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedVehicle.models.map((model, index) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-3 text-center hover:bg-gray-100 transition-colors">
+                        <div className="font-medium text-navy-900">{model}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-navy-900 mb-4">Electrical System Learning</h3>
+                <p className="text-gray-600 mb-4">
+                  Understanding the electrical systems of {selectedVehicle.name} vehicles is essential for modern automotive diagnostics and repair.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    to="/wiring-lab"
+                    onClick={() => setSelectedVehicle(null)}
+                    className="flex-1 px-6 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors text-center"
+                  >
+                    Practice Wiring Lab
+                  </Link>
+                  <Link
+                    to="/diagnostics"
+                    onClick={() => setSelectedVehicle(null)}
+                    className="flex-1 px-6 py-3 bg-navy-600 hover:bg-navy-700 text-white font-semibold rounded-lg transition-colors text-center"
+                  >
+                    Try Diagnostics Lab
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
