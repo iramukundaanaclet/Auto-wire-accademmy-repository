@@ -1,6 +1,17 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { getFeaturedVideos, getCategories } from '../utils/videoStorage'
 
 function Home() {
+  const [featuredVideos, setFeaturedVideos] = useState([])
+  const [categories, setCategories] = useState([])
+
+  useEffect(() => {
+    const featured = getFeaturedVideos()
+    const cats = getCategories()
+    setFeaturedVideos(featured.slice(0, 3)) // Show only top 3 featured videos
+    setCategories(cats)
+  }, [])
   return (
     <div className="bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
       {/* Hero Section */}
@@ -173,6 +184,70 @@ function Home() {
           </div>
         </div>
       </section>
+
+      {/* Featured Videos Section */}
+      {featuredVideos.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-2">Latest Automotive Videos</h2>
+              <p className="text-gray-300">Watch featured automotive learning content</p>
+            </div>
+            <Link
+              to="/videos"
+              className="px-6 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              View All Videos
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featuredVideos.map(video => {
+              const category = categories.find(c => c.id === video.categoryId)
+              return (
+                <div key={video.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden">
+                  <div className="relative aspect-video bg-gray-900">
+                    <img
+                      src={video.thumbnailUrl}
+                      alt={video.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-electric-600 rounded-full flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                    {video.featured && (
+                      <div className="absolute top-3 left-3 bg-accent-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                        Featured
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 bg-electric-100 text-electric-700 rounded-full text-xs font-medium">
+                        {category?.name || 'Uncategorized'}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-navy-900 mb-2 line-clamp-2">{video.title}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-3">{video.description}</p>
+                    <Link
+                      to="/videos"
+                      className="w-full px-4 py-2 bg-electric-600 hover:bg-electric-700 text-white font-medium rounded-lg transition-colors text-sm inline-block text-center"
+                    >
+                      Watch Video
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Stats Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

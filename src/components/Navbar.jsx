@@ -11,6 +11,7 @@ function Navbar() {
     { name: 'Wiring Lab', path: '/wiring-lab' },
     { name: 'Diagnostics', path: '/diagnostics' },
     { name: 'Diagrams', path: '/diagrams' },
+    { name: 'Videos', path: '/videos' },
     { name: 'Quiz', path: '/quiz' },
     { name: 'Progress', path: '/progress' },
     { name: 'Vehicles', path: '/vehicles' },
@@ -50,6 +51,12 @@ function Navbar() {
               className="ml-4 px-4 py-2 bg-accent-600 hover:bg-accent-700 rounded-md text-sm font-medium transition-colors"
             >
               Start Learning
+            </Link>
+            <Link
+              to="/admin/videos"
+              className="ml-2 px-4 py-2 bg-navy-700 hover:bg-navy-600 rounded-md text-sm font-medium transition-colors"
+            >
+              Admin
             </Link>
           </div>
 
@@ -98,6 +105,13 @@ function Navbar() {
               className="block px-3 py-2 mt-4 bg-accent-600 hover:bg-accent-700 rounded-md text-base font-medium text-center"
             >
               Start Learning
+            </Link>
+            <Link
+              to="/admin/videos"
+              onClick={() => setIsOpen(false)}
+              className="block px-3 py-2 mt-2 bg-navy-700 hover:bg-navy-600 rounded-md text-base font-medium text-center"
+            >
+              Admin
             </Link>
           </div>
         </div>

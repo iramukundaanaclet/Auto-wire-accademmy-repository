@@ -11,6 +11,9 @@ import Quiz from './pages/Quiz'
 import Progress from './pages/Progress'
 import About from './pages/About'
 import Vehicles from './pages/Vehicles'
+import Videos from './pages/Videos'
+import VideoManagement from './pages/VideoManagement'
+import CategoryManagement from './pages/CategoryManagement'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -30,6 +33,9 @@ function App() {
             <Route path="/progress" element={<Progress />} />
             <Route path="/about" element={<About />} />
             <Route path="/vehicles" element={<Vehicles />} />
+            <Route path="/videos" element={<Videos />} />
+            <Route path="/admin/videos" element={<VideoManagement />} />
+            <Route path="/admin/categories" element={<CategoryManagement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
