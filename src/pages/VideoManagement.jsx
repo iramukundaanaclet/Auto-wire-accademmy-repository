@@ -10,7 +10,9 @@ import {
   deleteVideo,
   getVideoStats,
   getCategories,
-  videoExists
+  videoExists,
+  hasLocalStorageVideos,
+  migrateLocalStorageVideos
 } from '../utils/videoStorage'
 import { formatDate } from '../utils/videoUtils'
 
@@ -26,78 +28,133 @@ function VideoManagement() {
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showMigration, setShowMigration] = useState(false)
+  const [migrationResult, setMigrationResult] = useState(null)
 
   useEffect(() => {
     loadData()
+    checkForMigration()
   }, [])
 
   useEffect(() => {
     filterVideos()
   }, [searchQuery, filterCategory, filterStatus])
 
-  const loadData = () => {
-    const vids = getVideos()
-    const cats = getCategories()
-    const videoStats = getVideoStats()
-    setVideos(vids)
-    setCategories(cats)
-    setStats(videoStats)
-  }
-
-  const filterVideos = () => {
-    let filtered = getVideos()
-
-    if (searchQuery) {
-      const searchTerm = searchQuery.toLowerCase()
-      filtered = filtered.filter(v =>
-        v.title.toLowerCase().includes(searchTerm) ||
-        v.description.toLowerCase().includes(searchTerm)
-      )
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const [vids, cats, videoStats] = await Promise.all([
+        getVideos(),
+        getCategories(),
+        getVideoStats()
+      ])
+      setVideos(vids)
+      setCategories(cats)
+      setStats(videoStats)
+    } catch (err) {
+      console.error('Error loading data:', err)
+      setError('Failed to load data. Please check your connection.')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(v => v.categoryId === filterCategory)
+  const checkForMigration = () => {
+    if (hasLocalStorageVideos()) {
+      setShowMigration(true)
     }
+  }
 
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(v => v.status === filterStatus)
+  const filterVideos = async () => {
+    try {
+      setLoading(true)
+      let filtered = await getVideos()
+
+      if (searchQuery) {
+        const searchTerm = searchQuery.toLowerCase()
+        filtered = filtered.filter(v =>
+          v.title.toLowerCase().includes(searchTerm) ||
+          v.description.toLowerCase().includes(searchTerm)
+        )
+      }
+
+      if (filterCategory !== 'all') {
+        filtered = filtered.filter(v => v.categoryId === filterCategory)
+      }
+
+      if (filterStatus !== 'all') {
+        filtered = filtered.filter(v => v.status === filterStatus)
+      }
+
+      setVideos(filtered)
+    } catch (err) {
+      console.error('Error filtering videos:', err)
+    } finally {
+      setLoading(false)
     }
-
-    setVideos(filtered)
   }
 
-  const handleAddVideo = (videoData) => {
-    if (videoExists(videoData.youtubeVideoId)) {
-      alert('This video already exists in the database')
-      return
+  const handleAddVideo = async (videoData) => {
+    try {
+      const exists = await videoExists(videoData.youtubeVideoId)
+      if (exists) {
+        alert('This video already exists in the database')
+        return
+      }
+      await addVideo(videoData)
+      await loadData()
+      setView('list')
+    } catch (err) {
+      console.error('Error adding video:', err)
+      alert('Failed to add video. Please try again.')
     }
-    addVideo(videoData)
-    loadData()
-    setView('list')
   }
 
-  const handleEditVideo = (videoData) => {
-    updateVideo(selectedVideo.id, videoData)
-    loadData()
-    setView('list')
-    setSelectedVideo(null)
+  const handleEditVideo = async (videoData) => {
+    try {
+      await updateVideo(selectedVideo.id, videoData)
+      await loadData()
+      setView('list')
+      setSelectedVideo(null)
+    } catch (err) {
+      console.error('Error updating video:', err)
+      alert('Failed to update video. Please try again.')
+    }
   }
 
-  const handleDeleteVideo = (videoId) => {
-    deleteVideo(videoId)
-    loadData()
-    setDeleteConfirm(null)
+  const handleDeleteVideo = async (videoId) => {
+    try {
+      await deleteVideo(videoId)
+      await loadData()
+      setDeleteConfirm(null)
+    } catch (err) {
+      console.error('Error deleting video:', err)
+      alert('Failed to delete video. Please try again.')
+    }
   }
 
-  const handleToggleStatus = (video) => {
-    const newStatus = video.status === 'published' ? 'draft' : 'published'
-    updateVideo(video.id, { status: newStatus })
-    loadData()
+  const handleToggleStatus = async (video) => {
+    try {
+      const newStatus = video.status === 'published' ? 'draft' : 'published'
+      await updateVideo(video.id, { status: newStatus })
+      await loadData()
+    } catch (err) {
+      console.error('Error toggling status:', err)
+      alert('Failed to update video status. Please try again.')
+    }
   }
 
-  const handleToggleFeatured = (video) => {
-    updateVideo(video.id, { featured: !video.featured })
-    loadData()
+  const handleToggleFeatured = async (video) => {
+    try {
+      await updateVideo(video.id, { featured: !video.featured })
+      await loadData()
+    } catch (err) {
+      console.error('Error toggling featured:', err)
+      alert('Failed to update featured status. Please try again.')
+    }
   }
 
   const handleViewVideo = (video) => {
@@ -106,9 +163,25 @@ function VideoManagement() {
     setSelectedVideoCategory(category)
   }
 
-  const handleBulkImportComplete = () => {
-    loadData()
+  const handleBulkImportComplete = async () => {
+    await loadData()
     setView('list')
+  }
+
+  const handleMigration = async () => {
+    try {
+      setLoading(true)
+      const result = await migrateLocalStorageVideos()
+      setMigrationResult(result)
+      if (result.success) {
+        await loadData()
+      }
+    } catch (err) {
+      console.error('Error during migration:', err)
+      setMigrationResult({ success: false, error: err.message })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -118,22 +191,72 @@ function VideoManagement() {
         <p className="text-gray-600">Manage YouTube videos, categories, and content</p>
       </div>
 
+      {/* Migration Notice */}
+      {showMigration && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">Local Storage Videos Detected</h3>
+          <p className="text-yellow-700 mb-4">
+            You have videos stored in your browser's local storage. These need to be migrated to the cloud database so they can be shared across all devices.
+          </p>
+          {migrationResult ? (
+            <div className="bg-white rounded-lg p-4">
+              <h4 className="font-semibold text-navy-900 mb-2">Migration Results</h4>
+              <div className="grid grid-cols-3 gap-4 mb-2">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{migrationResult.migrated}</div>
+                  <div className="text-sm text-gray-600">Migrated</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">{migrationResult.duplicates}</div>
+                  <div className="text-sm text-gray-600">Duplicates</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">{migrationResult.errors}</div>
+                  <div className="text-sm text-gray-600">Errors</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMigration(false)}
+                className="mt-4 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleMigration}
+              disabled={loading}
+              className="px-6 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Migrating...' : 'Import Existing Videos to Cloud'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
+
       {/* Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-3xl font-bold text-navy-900 mb-2">{stats.total}</div>
+          <div className="text-3xl font-bold text-navy-900 mb-2">{loading ? '...' : stats.total}</div>
           <div className="text-gray-600">Total Videos</div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-3xl font-bold text-green-600 mb-2">{stats.published}</div>
+          <div className="text-3xl font-bold text-green-600 mb-2">{loading ? '...' : stats.published}</div>
           <div className="text-gray-600">Published</div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-3xl font-bold text-yellow-600 mb-2">{stats.drafts}</div>
+          <div className="text-3xl font-bold text-yellow-600 mb-2">{loading ? '...' : stats.drafts}</div>
           <div className="text-gray-600">Drafts</div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-3xl font-bold text-electric-600 mb-2">{stats.featured}</div>
+          <div className="text-3xl font-bold text-electric-600 mb-2">{loading ? '...' : stats.featured}</div>
           <div className="text-gray-600">Featured</div>
         </div>
       </div>
@@ -199,129 +322,136 @@ function VideoManagement() {
 
           {/* Videos Table */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Video</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Featured</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {videos.map((video) => {
-                    const category = categories.find(c => c.id === video.categoryId)
-                    return (
-                      <tr key={video.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <img
-                              src={video.thumbnailUrl}
-                              alt={video.title}
-                              className="w-20 h-12 object-cover rounded"
-                              onError={(e) => {
-                                e.target.style.display = 'none'
-                              }}
-                            />
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-navy-900">{video.title}</div>
-                              <div className="text-xs text-gray-500 truncate max-w-xs">{video.youtubeUrl}</div>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-electric-600"></div>
+                <p className="text-gray-600 mt-2">Loading videos...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Video</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Featured</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {videos.map((video) => {
+                      const category = categories.find(c => c.id === video.categoryId)
+                      return (
+                        <tr key={video.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <img
+                                src={video.thumbnailUrl}
+                                alt={video.title}
+                                className="w-20 h-12 object-cover rounded"
+                                onError={(e) => {
+                                  e.target.style.display = 'none'
+                                }}
+                              />
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-navy-900">{video.title}</div>
+                                <div className="text-xs text-gray-500 truncate max-w-xs">{video.youtubeUrl}</div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-electric-100 text-electric-700">
-                            {category?.name || 'Uncategorized'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            video.status === 'published' 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {video.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {video.featured ? (
-                            <span className="text-accent-500">★ Featured</span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(video.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleViewVideo(video)}
-                              className="text-electric-600 hover:text-electric-700"
-                              title="View"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedVideo(video)
-                                setView('edit')
-                              }}
-                              className="text-navy-600 hover:text-navy-700"
-                              title="Edit"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => handleToggleStatus(video)}
-                              className="text-yellow-600 hover:text-yellow-700"
-                              title={video.status === 'published' ? 'Unpublish' : 'Publish'}
-                            >
-                              {video.status === 'published' ? (
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-electric-100 text-electric-700">
+                              {category?.name || 'Uncategorized'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              video.status === 'published' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {video.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {video.featured ? (
+                              <span className="text-accent-500">★ Featured</span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(video.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleViewVideo(video)}
+                                className="text-electric-600 hover:text-electric-700"
+                                title="View"
+                              >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
-                              ) : (
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedVideo(video)
+                                  setView('edit')
+                                }}
+                                className="text-navy-600 hover:text-navy-700"
+                                title="Edit"
+                              >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                              )}
-                            </button>
-                            <button
-                              onClick={() => handleToggleFeatured(video)}
-                              className="text-accent-600 hover:text-accent-700"
-                              title="Toggle Featured"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm(video)}
-                              className="text-red-600 hover:text-red-700"
-                              title="Delete"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {videos.length === 0 && (
+                              </button>
+                              <button
+                                onClick={() => handleToggleStatus(video)}
+                                className="text-yellow-600 hover:text-yellow-700"
+                                title={video.status === 'published' ? 'Unpublish' : 'Publish'}
+                              >
+                                {video.status === 'published' ? (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleToggleFeatured(video)}
+                                className="text-accent-600 hover:text-accent-700"
+                                title="Toggle Featured"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirm(video)}
+                                className="text-red-600 hover:text-red-700"
+                                title="Delete"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {!loading && videos.length === 0 && (
               <div className="text-center py-12">
                 <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />

@@ -5,13 +5,27 @@ import { getFeaturedVideos, getCategories } from '../utils/videoStorage'
 function Home() {
   const [featuredVideos, setFeaturedVideos] = useState([])
   const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const featured = getFeaturedVideos()
-    const cats = getCategories()
-    setFeaturedVideos(featured.slice(0, 3)) // Show only top 3 featured videos
-    setCategories(cats)
+    loadFeaturedVideos()
   }, [])
+
+  const loadFeaturedVideos = async () => {
+    try {
+      setLoading(true)
+      const [featured, cats] = await Promise.all([
+        getFeaturedVideos(),
+        getCategories()
+      ])
+      setFeaturedVideos(featured.slice(0, 3)) // Show only top 3 featured videos
+      setCategories(cats)
+    } catch (error) {
+      console.error('Error loading featured videos:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
   return (
     <div className="bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
       {/* Hero Section */}
@@ -186,7 +200,7 @@ function Home() {
       </section>
 
       {/* Featured Videos Section */}
-      {featuredVideos.length > 0 && (
+      {!loading && featuredVideos.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="flex items-center justify-between mb-8">
             <div>

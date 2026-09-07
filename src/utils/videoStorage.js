@@ -1,271 +1,440 @@
+import { supabase } from '../lib/supabase'
 import { generateId, formatDate } from './videoUtils'
 
 const VIDEOS_KEY = 'autowire_videos'
 const CATEGORIES_KEY = 'autowire_video_categories'
 
-// Initial categories
-const INITIAL_CATEGORIES = [
-  { id: 'cat1', name: 'Electric Vehicles', description: 'EV systems and technology' },
-  { id: 'cat2', name: 'Engine Systems', description: 'Internal combustion engines' },
-  { id: 'cat3', name: 'Brake Systems', description: 'Braking systems and components' },
-  { id: 'cat4', name: 'Electrical Systems', description: 'Vehicle electrical wiring' },
-  { id: 'cat5', name: 'Vehicle Diagnostics', description: 'Diagnostic procedures' },
-  { id: 'cat6', name: 'Suspension Systems', description: 'Suspension and steering' },
-  { id: 'cat7', name: 'Transmission', description: 'Transmission systems' },
-  { id: 'cat8', name: 'Automotive Technology', description: 'General automotive tech' },
-  { id: 'cat9', name: 'Vehicle Maintenance', description: 'Maintenance procedures' },
-  { id: 'cat10', name: 'Body Repair', description: 'Body work and repair' }
-]
-
-// Initial video
-const INITIAL_VIDEO = {
-  id: generateId(),
-  title: 'EV Electrical Systems BASICS',
-  youtubeUrl: 'https://youtu.be/mNOYS-duUJY',
-  youtubeVideoId: 'mNOYS-duUJY',
-  embedUrl: 'https://www.youtube.com/embed/mNOYS-duUJY',
-  thumbnailUrl: 'https://img.youtube.com/vi/mNOYS-duUJY/hqdefault.jpg',
-  description: 'An introductory video about EV electrical systems and their basic components.',
-  categoryId: 'cat1',
-  status: 'published',
-  featured: true,
-  displayOrder: 1,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
-}
-
-/**
- * Get all videos from localStorage
- */
-export function getVideos() {
+// Legacy localStorage functions for migration
+const getLocalVideos = () => {
   try {
     const videos = localStorage.getItem(VIDEOS_KEY)
-    if (!videos) {
-      // Initialize with the sample video
-      const initialVideos = [INITIAL_VIDEO]
-      localStorage.setItem(VIDEOS_KEY, JSON.stringify(initialVideos))
-      return initialVideos
-    }
-    return JSON.parse(videos)
+    return videos ? JSON.parse(videos) : []
   } catch (error) {
     console.error('Error reading videos from localStorage:', error)
     return []
   }
 }
 
-/**
- * Save videos to localStorage
- */
-export function saveVideos(videos) {
+const getLocalCategories = () => {
   try {
-    localStorage.setItem(VIDEOS_KEY, JSON.stringify(videos))
+    const categories = localStorage.getItem(CATEGORIES_KEY)
+    return categories ? JSON.parse(categories) : []
+  } catch (error) {
+    console.error('Error reading categories from localStorage:', error)
+    return []
+  }
+}
+
+/**
+ * Convert database record to frontend format
+ */
+const convertVideoFromDB = (dbVideo) => ({
+  id: dbVideo.id,
+  title: dbVideo.title,
+  description: dbVideo.description,
+  youtubeUrl: dbVideo.youtube_url,
+  youtubeVideoId: dbVideo.youtube_video_id,
+  embedUrl: `https://www.youtube.com/embed/${dbVideo.youtube_video_id}`,
+  thumbnailUrl: dbVideo.thumbnail_url,
+  categoryId: dbVideo.category_id,
+  status: dbVideo.status,
+  featured: dbVideo.featured,
+  displayOrder: dbVideo.display_order,
+  createdAt: dbVideo.created_at,
+  updatedAt: dbVideo.updated_at
+})
+
+const convertVideoToDB = (video) => ({
+  title: video.title,
+  description: video.description,
+  youtube_url: video.youtubeUrl,
+  youtube_video_id: video.youtubeVideoId,
+  thumbnail_url: video.thumbnailUrl,
+  category_id: video.categoryId,
+  status: video.status,
+  featured: video.featured,
+  display_order: video.displayOrder
+})
+
+const convertCategoryFromDB = (dbCategory) => ({
+  id: dbCategory.id,
+  name: dbCategory.name,
+  description: dbCategory.description,
+  createdAt: dbCategory.created_at,
+  updatedAt: dbCategory.updated_at
+})
+
+const convertCategoryToDB = (category) => ({
+  name: category.name,
+  description: category.description
+})
+
+/**
+ * Get all videos from Supabase
+ */
+export async function getVideos() {
+  try {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data.map(convertVideoFromDB)
+  } catch (error) {
+    console.error('Error fetching videos:', error)
+    return []
+  }
+}
+
+/**
+ * Add a new video to Supabase
+ */
+export async function addVideo(videoData) {
+  try {
+    const dbData = convertVideoToDB(videoData)
+    const { data, error } = await supabase
+      .from('videos')
+      .insert(dbData)
+      .select()
+      .single()
+
+    if (error) throw error
+    return convertVideoFromDB(data)
+  } catch (error) {
+    console.error('Error adding video:', error)
+    throw error
+  }
+}
+
+/**
+ * Update an existing video in Supabase
+ */
+export async function updateVideo(videoId, videoData) {
+  try {
+    const dbData = convertVideoToDB(videoData)
+    const { data, error } = await supabase
+      .from('videos')
+      .update(dbData)
+      .eq('id', videoId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return convertVideoFromDB(data)
+  } catch (error) {
+    console.error('Error updating video:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete a video from Supabase
+ */
+export async function deleteVideo(videoId) {
+  try {
+    const { error } = await supabase
+      .from('videos')
+      .delete()
+      .eq('id', videoId)
+
+    if (error) throw error
     return true
   } catch (error) {
-    console.error('Error saving videos to localStorage:', error)
-    return false
+    console.error('Error deleting video:', error)
+    throw error
   }
-}
-
-/**
- * Add a new video
- */
-export function addVideo(videoData) {
-  const videos = getVideos()
-  const newVideo = {
-    id: generateId(),
-    ...videoData,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-  videos.push(newVideo)
-  saveVideos(videos)
-  return newVideo
-}
-
-/**
- * Update an existing video
- */
-export function updateVideo(videoId, videoData) {
-  const videos = getVideos()
-  const index = videos.findIndex(v => v.id === videoId)
-  if (index !== -1) {
-    videos[index] = {
-      ...videos[index],
-      ...videoData,
-      updatedAt: new Date().toISOString()
-    }
-    saveVideos(videos)
-    return videos[index]
-  }
-  return null
-}
-
-/**
- * Delete a video
- */
-export function deleteVideo(videoId) {
-  const videos = getVideos()
-  const filteredVideos = videos.filter(v => v.id !== videoId)
-  saveVideos(filteredVideos)
-  return filteredVideos
 }
 
 /**
  * Get a single video by ID
  */
-export function getVideoById(videoId) {
-  const videos = getVideos()
-  return videos.find(v => v.id === videoId) || null
+export async function getVideoById(videoId) {
+  try {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('id', videoId)
+      .single()
+
+    if (error) throw error
+    return convertVideoFromDB(data)
+  } catch (error) {
+    console.error('Error fetching video:', error)
+    return null
+  }
 }
 
 /**
  * Get published videos only
  */
-export function getPublishedVideos() {
-  const videos = getVideos()
-  return videos.filter(v => v.status === 'published')
+export async function getPublishedVideos() {
+  try {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data.map(convertVideoFromDB)
+  } catch (error) {
+    console.error('Error fetching published videos:', error)
+    return []
+  }
 }
 
 /**
  * Get featured videos only
  */
-export function getFeaturedVideos() {
-  const videos = getPublishedVideos()
-  return videos.filter(v => v.featured)
+export async function getFeaturedVideos() {
+  try {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('status', 'published')
+      .eq('featured', true)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data.map(convertVideoFromDB)
+  } catch (error) {
+    console.error('Error fetching featured videos:', error)
+    return []
+  }
 }
 
 /**
  * Get videos by category
  */
-export function getVideosByCategory(categoryId) {
-  const videos = getPublishedVideos()
-  return videos.filter(v => v.categoryId === categoryId)
+export async function getVideosByCategory(categoryId) {
+  try {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('status', 'published')
+      .eq('category_id', categoryId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data.map(convertVideoFromDB)
+  } catch (error) {
+    console.error('Error fetching videos by category:', error)
+    return []
+  }
 }
 
 /**
  * Search videos
  */
-export function searchVideos(query) {
-  const videos = getPublishedVideos()
-  const searchTerm = query.toLowerCase()
-  return videos.filter(v =>
-    v.title.toLowerCase().includes(searchTerm) ||
-    v.description.toLowerCase().includes(searchTerm)
-  )
+export async function searchVideos(query) {
+  try {
+    const searchTerm = query.toLowerCase()
+    const { data, error } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('status', 'published')
+      .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data.map(convertVideoFromDB)
+  } catch (error) {
+    console.error('Error searching videos:', error)
+    return []
+  }
 }
 
 /**
  * Check if video already exists (by YouTube video ID)
  */
-export function videoExists(youtubeVideoId) {
-  const videos = getVideos()
-  return videos.some(v => v.youtubeVideoId === youtubeVideoId)
-}
-
-/**
- * Get video statistics
- */
-export function getVideoStats() {
-  const videos = getVideos()
-  return {
-    total: videos.length,
-    published: videos.filter(v => v.status === 'published').length,
-    drafts: videos.filter(v => v.status === 'draft').length,
-    featured: videos.filter(v => v.featured).length
-  }
-}
-
-/**
- * Get categories from localStorage
- */
-export function getCategories() {
+export async function videoExists(youtubeVideoId) {
   try {
-    const categories = localStorage.getItem(CATEGORIES_KEY)
-    if (!categories) {
-      // Initialize with default categories
-      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(INITIAL_CATEGORIES))
-      return INITIAL_CATEGORIES
-    }
-    return JSON.parse(categories)
-  } catch (error) {
-    console.error('Error reading categories from localStorage:', error)
-    return INITIAL_CATEGORIES
-  }
-}
+    const { data, error } = await supabase
+      .from('videos')
+      .select('id')
+      .eq('youtube_video_id', youtubeVideoId)
+      .single()
 
-/**
- * Save categories to localStorage
- */
-export function saveCategories(categories) {
-  try {
-    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories))
-    return true
+    if (error && error.code !== 'PGRST116') throw error
+    return !!data
   } catch (error) {
-    console.error('Error saving categories to localStorage:', error)
+    console.error('Error checking video existence:', error)
     return false
   }
 }
 
 /**
- * Add a new category
+ * Get video statistics
  */
-export function addCategory(categoryData) {
-  const categories = getCategories()
-  const newCategory = {
-    id: generateId(),
-    ...categoryData,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-  categories.push(newCategory)
-  saveCategories(categories)
-  return newCategory
-}
+export async function getVideoStats() {
+  try {
+    const { data: allVideos, error: allError } = await supabase
+      .from('videos')
+      .select('status, featured')
 
-/**
- * Update a category
- */
-export function updateCategory(categoryId, categoryData) {
-  const categories = getCategories()
-  const index = categories.findIndex(c => c.id === categoryId)
-  if (index !== -1) {
-    categories[index] = {
-      ...categories[index],
-      ...categoryData,
-      updatedAt: new Date().toISOString()
+    if (allError) throw allError
+
+    return {
+      total: allVideos.length,
+      published: allVideos.filter(v => v.status === 'published').length,
+      drafts: allVideos.filter(v => v.status === 'draft').length,
+      featured: allVideos.filter(v => v.featured).length
     }
-    saveCategories(categories)
-    return categories[index]
+  } catch (error) {
+    console.error('Error fetching video stats:', error)
+    return { total: 0, published: 0, drafts: 0, featured: 0 }
   }
-  return null
 }
 
 /**
- * Delete a category
+ * Get categories from Supabase
  */
-export function deleteCategory(categoryId) {
-  const categories = getCategories()
-  const filteredCategories = categories.filter(c => c.id !== categoryId)
-  saveCategories(filteredCategories)
-  return filteredCategories
+export async function getCategories() {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name')
+
+    if (error) throw error
+    return data.map(convertCategoryFromDB)
+  } catch (error) {
+    console.error('Error fetching categories:', error)
+    return []
+  }
+}
+
+/**
+ * Add a new category to Supabase
+ */
+export async function addCategory(categoryData) {
+  try {
+    const dbData = convertCategoryToDB(categoryData)
+    const { data, error } = await supabase
+      .from('categories')
+      .insert(dbData)
+      .select()
+      .single()
+
+    if (error) throw error
+    return convertCategoryFromDB(data)
+  } catch (error) {
+    console.error('Error adding category:', error)
+    throw error
+  }
+}
+
+/**
+ * Update a category in Supabase
+ */
+export async function updateCategory(categoryId, categoryData) {
+  try {
+    const dbData = convertCategoryToDB(categoryData)
+    const { data, error } = await supabase
+      .from('categories')
+      .update(dbData)
+      .eq('id', categoryId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return convertCategoryFromDB(data)
+  } catch (error) {
+    console.error('Error updating category:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete a category from Supabase
+ */
+export async function deleteCategory(categoryId) {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', categoryId)
+
+    if (error) throw error
+    return true
+  } catch (error) {
+    console.error('Error deleting category:', error)
+    throw error
+  }
 }
 
 /**
  * Get category by ID
  */
-export function getCategoryById(categoryId) {
-  const categories = getCategories()
-  return categories.find(c => c.id === categoryId) || null
+export async function getCategoryById(categoryId) {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', categoryId)
+      .single()
+
+    if (error) throw error
+    return convertCategoryFromDB(data)
+  } catch (error) {
+    console.error('Error fetching category:', error)
+    return null
+  }
 }
 
 /**
- * Initialize data if not present
+ * Migrate localStorage videos to Supabase
+ */
+export async function migrateLocalStorageVideos() {
+  try {
+    const localVideos = getLocalVideos()
+    if (localVideos.length === 0) {
+      return { success: true, migrated: 0, duplicates: 0, errors: 0 }
+    }
+
+    let migrated = 0
+    let duplicates = 0
+    let errors = 0
+
+    for (const video of localVideos) {
+      try {
+        // Check if video already exists in Supabase
+        const exists = await videoExists(video.youtubeVideoId)
+        if (exists) {
+          duplicates++
+          continue
+        }
+
+        // Add video to Supabase
+        await addVideo(video)
+        migrated++
+      } catch (error) {
+        console.error('Error migrating video:', error)
+        errors++
+      }
+    }
+
+    return { success: true, migrated, duplicates, errors }
+  } catch (error) {
+    console.error('Error during migration:', error)
+    return { success: false, migrated: 0, duplicates: 0, errors: 1 }
+  }
+}
+
+/**
+ * Check if localStorage has videos to migrate
+ */
+export function hasLocalStorageVideos() {
+  const localVideos = getLocalVideos()
+  return localVideos.length > 0
+}
+
+/**
+ * Initialize data (legacy compatibility)
  */
 export function initializeVideoData() {
-  if (!localStorage.getItem(VIDEOS_KEY)) {
-    saveVideos([INITIAL_VIDEO])
-  }
-  if (!localStorage.getItem(CATEGORIES_KEY)) {
-    saveCategories(INITIAL_CATEGORIES)
-  }
+  // This function is kept for compatibility but no longer initializes localStorage
+  // The database is initialized by the SQL schema
+  console.log('Video data initialization: Using Supabase database')
 }

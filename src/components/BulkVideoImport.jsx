@@ -17,14 +17,22 @@ function BulkVideoImport({ onComplete, onCancel }) {
   const [results, setResults] = useState(null)
 
   useEffect(() => {
-    const cats = getCategories()
-    setCategories(cats)
-    if (cats.length > 0) {
-      setDefaultCategoryId(cats[0].id)
-    }
+    loadCategories()
   }, [])
 
-  const handleImport = () => {
+  const loadCategories = async () => {
+    try {
+      const cats = await getCategories()
+      setCategories(cats)
+      if (cats.length > 0) {
+        setDefaultCategoryId(cats[0].id)
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error)
+    }
+  }
+
+  const handleImport = async () => {
     setProcessing(true)
     setResults(null)
 
@@ -35,23 +43,24 @@ function BulkVideoImport({ onComplete, onCancel }) {
     let invalid = 0
     const processedResults = []
 
-    urlList.forEach((url, index) => {
+    for (const url of urlList) {
       if (!validateYouTubeUrl(url)) {
         invalid++
         processedResults.push({ url, status: 'invalid', message: 'Invalid YouTube URL' })
-        return
+        continue
       }
 
       const videoId = extractYouTubeVideoId(url)
       
-      if (videoExists(videoId)) {
+      const exists = await videoExists(videoId)
+      if (exists) {
         duplicates++
         processedResults.push({ url, status: 'duplicate', message: 'Video already exists' })
-        return
+        continue
       }
 
       const videoData = {
-        title: `Video ${index + 1}`,
+        title: `Video ${processedResults.length + added + 1}`,
         youtubeUrl: url,
         youtubeVideoId: videoId,
         embedUrl: getYouTubeEmbedUrl(videoId),
@@ -63,10 +72,15 @@ function BulkVideoImport({ onComplete, onCancel }) {
         displayOrder: 0
       }
 
-      addVideo(videoData)
-      added++
-      processedResults.push({ url, status: 'added', message: 'Successfully added' })
-    })
+      try {
+        await addVideo(videoData)
+        added++
+        processedResults.push({ url, status: 'added', message: 'Successfully added' })
+      } catch (error) {
+        console.error('Error adding video:', error)
+        processedResults.push({ url, status: 'error', message: 'Failed to add video' })
+      }
+    }
 
     setResults({
       total: urlList.length,

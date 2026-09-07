@@ -9,43 +9,69 @@ function CategoryManagement() {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [formData, setFormData] = useState({ name: '', description: '' })
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     loadCategories()
   }, [])
 
-  const loadCategories = () => {
-    const cats = getCategories()
-    setCategories(cats)
-  }
-
-  const handleAddCategory = () => {
-    if (!formData.name.trim()) {
-      alert('Please enter a category name')
-      return
+  const loadCategories = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const cats = await getCategories()
+      setCategories(cats)
+    } catch (err) {
+      console.error('Error loading categories:', err)
+      setError('Failed to load categories. Please check your connection.')
+    } finally {
+      setLoading(false)
     }
-    addCategory(formData)
-    loadCategories()
-    setView('list')
-    setFormData({ name: '', description: '' })
   }
 
-  const handleEditCategory = () => {
-    if (!formData.name.trim()) {
-      alert('Please enter a category name')
-      return
+  const handleAddCategory = async () => {
+    try {
+      if (!formData.name.trim()) {
+        alert('Please enter a category name')
+        return
+      }
+      await addCategory(formData)
+      await loadCategories()
+      setView('list')
+      setFormData({ name: '', description: '' })
+    } catch (err) {
+      console.error('Error adding category:', err)
+      alert('Failed to add category. Please try again.')
     }
-    updateCategory(selectedCategory.id, formData)
-    loadCategories()
-    setView('list')
-    setSelectedCategory(null)
-    setFormData({ name: '', description: '' })
   }
 
-  const handleDeleteCategory = (categoryId) => {
-    deleteCategory(categoryId)
-    loadCategories()
-    setDeleteConfirm(null)
+  const handleEditCategory = async () => {
+    try {
+      if (!formData.name.trim()) {
+        alert('Please enter a category name')
+        return
+      }
+      await updateCategory(selectedCategory.id, formData)
+      await loadCategories()
+      setView('list')
+      setSelectedCategory(null)
+      setFormData({ name: '', description: '' })
+    } catch (err) {
+      console.error('Error updating category:', err)
+      alert('Failed to update category. Please try again.')
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId) => {
+    try {
+      await deleteCategory(categoryId)
+      await loadCategories()
+      setDeleteConfirm(null)
+    } catch (err) {
+      console.error('Error deleting category:', err)
+      alert('Failed to delete category. Please try again.')
+    }
   }
 
   const startEdit = (category) => {
@@ -65,7 +91,7 @@ function CategoryManagement() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-3xl font-bold text-navy-900">{categories.length}</div>
+            <div className="text-3xl font-bold text-navy-900">{loading ? '...' : categories.length}</div>
             <div className="text-gray-600">Total Categories</div>
           </div>
           <div className="flex gap-2">
@@ -88,53 +114,67 @@ function CategoryManagement() {
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
+
       {/* Main Content */}
       {view === 'list' && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {categories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-navy-900">{category.name}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-600">{category.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => startEdit(category)}
-                        className="text-navy-600 hover:text-navy-700"
-                        title="Edit"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(category)}
-                        className="text-red-600 hover:text-red-700"
-                        title="Delete"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-electric-600"></div>
+              <p className="text-gray-600 mt-2">Loading categories...</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {categories.length === 0 && (
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {categories.map((category) => (
+                  <tr key={category.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-navy-900">{category.name}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">{category.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(category)}
+                          className="text-navy-600 hover:text-navy-700"
+                          title="Edit"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(category)}
+                          className="text-red-600 hover:text-red-700"
+                          title="Delete"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {!loading && categories.length === 0 && (
             <div className="text-center py-12">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />

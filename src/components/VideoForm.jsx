@@ -20,10 +20,10 @@ function VideoForm({ video, onSubmit, onCancel }) {
   const [categories, setCategories] = useState([])
   const [error, setError] = useState('')
   const [urlPreview, setUrlPreview] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const cats = getCategories()
-    setCategories(cats)
+    loadCategories()
     
     if (video) {
       setFormData({
@@ -37,6 +37,15 @@ function VideoForm({ video, onSubmit, onCancel }) {
       })
     }
   }, [video])
+
+  const loadCategories = async () => {
+    try {
+      const cats = await getCategories()
+      setCategories(cats)
+    } catch (error) {
+      console.error('Error loading categories:', error)
+    }
+  }
 
   const handleUrlChange = (e) => {
     const url = e.target.value
@@ -55,28 +64,33 @@ function VideoForm({ video, onSubmit, onCancel }) {
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setLoading(true)
 
     // Validation
     if (!formData.title.trim()) {
       setError('Please enter a video title')
+      setLoading(false)
       return
     }
 
     if (!formData.youtubeUrl.trim()) {
       setError('Please enter a YouTube URL')
+      setLoading(false)
       return
     }
 
     if (!validateYouTubeUrl(formData.youtubeUrl)) {
       setError('Please enter a valid YouTube video URL')
+      setLoading(false)
       return
     }
 
     if (!formData.categoryId) {
       setError('Please select a category')
+      setLoading(false)
       return
     }
 
@@ -94,7 +108,14 @@ function VideoForm({ video, onSubmit, onCancel }) {
       displayOrder: formData.displayOrder
     }
 
-    onSubmit(videoData)
+    try {
+      await onSubmit(videoData)
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      setError('Failed to save video. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -217,14 +238,16 @@ function VideoForm({ video, onSubmit, onCancel }) {
       <div className="flex gap-4">
         <button
           type="submit"
-          className="flex-1 px-6 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors"
+          disabled={loading}
+          className="flex-1 px-6 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {video ? 'Update Video' : 'Add Video'}
+          {loading ? 'Saving...' : (video ? 'Update Video' : 'Add Video')}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+          disabled={loading}
+          className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
