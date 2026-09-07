@@ -1,27 +1,78 @@
-import { supabase } from '../lib/supabase'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { generateId, formatDate } from './videoUtils'
 
 const VIDEOS_KEY = 'autowire_videos'
 const CATEGORIES_KEY = 'autowire_video_categories'
 
-// Legacy localStorage functions for migration
+// Initial categories for fallback mode
+const INITIAL_CATEGORIES = [
+  { id: 'cat1', name: 'Electric Vehicles', description: 'EV systems and technology' },
+  { id: 'cat2', name: 'Engine Systems', description: 'Internal combustion engines' },
+  { id: 'cat3', name: 'Brake Systems', description: 'Braking systems and components' },
+  { id: 'cat4', name: 'Electrical Systems', description: 'Vehicle electrical wiring' },
+  { id: 'cat5', name: 'Vehicle Diagnostics', description: 'Diagnostic procedures' },
+  { id: 'cat6', name: 'Suspension Systems', description: 'Suspension and steering' },
+  { id: 'cat7', name: 'Transmission', description: 'Transmission systems' },
+  { id: 'cat8', name: 'Automotive Technology', description: 'General automotive tech' },
+  { id: 'cat9', name: 'Vehicle Maintenance', description: 'Maintenance procedures' },
+  { id: 'cat10', name: 'Body Repair', description: 'Body work and repair' }
+]
+
+// Initial video for fallback mode
+const INITIAL_VIDEO = {
+  id: generateId(),
+  title: 'EV Electrical Systems BASICS',
+  youtubeUrl: 'https://youtu.be/mNOYS-duUJY',
+  youtubeVideoId: 'mNOYS-duUJY',
+  embedUrl: 'https://www.youtube.com/embed/mNOYS-duUJY',
+  thumbnailUrl: 'https://img.youtube.com/vi/mNOYS-duUJY/hqdefault.jpg',
+  description: 'An introductory video about EV electrical systems and their basic components.',
+  categoryId: 'cat1',
+  status: 'published',
+  featured: true,
+  displayOrder: 1,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+}
+
+// Legacy localStorage functions for fallback mode
 const getLocalVideos = () => {
   try {
     const videos = localStorage.getItem(VIDEOS_KEY)
-    return videos ? JSON.parse(videos) : []
+    return videos ? JSON.parse(videos) : [INITIAL_VIDEO]
   } catch (error) {
     console.error('Error reading videos from localStorage:', error)
-    return []
+    return [INITIAL_VIDEO]
   }
 }
 
 const getLocalCategories = () => {
   try {
     const categories = localStorage.getItem(CATEGORIES_KEY)
-    return categories ? JSON.parse(categories) : []
+    return categories ? JSON.parse(categories) : INITIAL_CATEGORIES
   } catch (error) {
     console.error('Error reading categories from localStorage:', error)
-    return []
+    return INITIAL_CATEGORIES
+  }
+}
+
+const saveLocalVideos = (videos) => {
+  try {
+    localStorage.setItem(VIDEOS_KEY, JSON.stringify(videos))
+    return true
+  } catch (error) {
+    console.error('Error saving videos to localStorage:', error)
+    return false
+  }
+}
+
+const saveLocalCategories = (categories) => {
+  try {
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories))
+    return true
+  } catch (error) {
+    console.error('Error saving categories to localStorage:', error)
+    return false
   }
 }
 
@@ -70,9 +121,14 @@ const convertCategoryToDB = (category) => ({
 })
 
 /**
- * Get all videos from Supabase
+ * Get all videos from Supabase or fallback to localStorage
  */
 export async function getVideos() {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for videos')
+    return getLocalVideos()
+  }
+
   try {
     const { data, error } = await supabase
       .from('videos')
@@ -82,15 +138,29 @@ export async function getVideos() {
     if (error) throw error
     return data.map(convertVideoFromDB)
   } catch (error) {
-    console.error('Error fetching videos:', error)
-    return []
+    console.error('Error fetching videos from Supabase, using localStorage fallback:', error)
+    return getLocalVideos()
   }
 }
 
 /**
- * Add a new video to Supabase
+ * Add a new video to Supabase or fallback to localStorage
  */
 export async function addVideo(videoData) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for addVideo')
+    const videos = getLocalVideos()
+    const newVideo = {
+      id: generateId(),
+      ...videoData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    videos.push(newVideo)
+    saveLocalVideos(videos)
+    return newVideo
+  }
+
   try {
     const dbData = convertVideoToDB(videoData)
     const { data, error } = await supabase
@@ -102,15 +172,31 @@ export async function addVideo(videoData) {
     if (error) throw error
     return convertVideoFromDB(data)
   } catch (error) {
-    console.error('Error adding video:', error)
-    throw error
+    console.error('Error adding video to Supabase, using localStorage fallback:', error)
+    return addVideo(videoData) // Fallback to localStorage
   }
 }
 
 /**
- * Update an existing video in Supabase
+ * Update an existing video in Supabase or fallback to localStorage
  */
 export async function updateVideo(videoId, videoData) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for updateVideo')
+    const videos = getLocalVideos()
+    const index = videos.findIndex(v => v.id === videoId)
+    if (index !== -1) {
+      videos[index] = {
+        ...videos[index],
+        ...videoData,
+        updatedAt: new Date().toISOString()
+      }
+      saveLocalVideos(videos)
+      return videos[index]
+    }
+    return null
+  }
+
   try {
     const dbData = convertVideoToDB(videoData)
     const { data, error } = await supabase
@@ -123,15 +209,23 @@ export async function updateVideo(videoId, videoData) {
     if (error) throw error
     return convertVideoFromDB(data)
   } catch (error) {
-    console.error('Error updating video:', error)
-    throw error
+    console.error('Error updating video in Supabase, using localStorage fallback:', error)
+    return updateVideo(videoId, videoData) // Fallback to localStorage
   }
 }
 
 /**
- * Delete a video from Supabase
+ * Delete a video from Supabase or fallback to localStorage
  */
 export async function deleteVideo(videoId) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for deleteVideo')
+    const videos = getLocalVideos()
+    const filteredVideos = videos.filter(v => v.id !== videoId)
+    saveLocalVideos(filteredVideos)
+    return true
+  }
+
   try {
     const { error } = await supabase
       .from('videos')
@@ -141,8 +235,8 @@ export async function deleteVideo(videoId) {
     if (error) throw error
     return true
   } catch (error) {
-    console.error('Error deleting video:', error)
-    throw error
+    console.error('Error deleting video from Supabase, using localStorage fallback:', error)
+    return deleteVideo(videoId) // Fallback to localStorage
   }
 }
 
@@ -150,6 +244,11 @@ export async function deleteVideo(videoId) {
  * Get a single video by ID
  */
 export async function getVideoById(videoId) {
+  if (!isSupabaseConfigured) {
+    const videos = getLocalVideos()
+    return videos.find(v => v.id === videoId) || null
+  }
+
   try {
     const { data, error } = await supabase
       .from('videos')
@@ -169,6 +268,11 @@ export async function getVideoById(videoId) {
  * Get published videos only
  */
 export async function getPublishedVideos() {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for getPublishedVideos')
+    return getLocalVideos().filter(v => v.status === 'published')
+  }
+
   try {
     const { data, error } = await supabase
       .from('videos')
@@ -179,8 +283,8 @@ export async function getPublishedVideos() {
     if (error) throw error
     return data.map(convertVideoFromDB)
   } catch (error) {
-    console.error('Error fetching published videos:', error)
-    return []
+    console.error('Error fetching published videos from Supabase, using localStorage fallback:', error)
+    return getLocalVideos().filter(v => v.status === 'published')
   }
 }
 
@@ -188,6 +292,11 @@ export async function getPublishedVideos() {
  * Get featured videos only
  */
 export async function getFeaturedVideos() {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for getFeaturedVideos')
+    return getLocalVideos().filter(v => v.status === 'published' && v.featured)
+  }
+
   try {
     const { data, error } = await supabase
       .from('videos')
@@ -199,8 +308,8 @@ export async function getFeaturedVideos() {
     if (error) throw error
     return data.map(convertVideoFromDB)
   } catch (error) {
-    console.error('Error fetching featured videos:', error)
-    return []
+    console.error('Error fetching featured videos from Supabase, using localStorage fallback:', error)
+    return getLocalVideos().filter(v => v.status === 'published' && v.featured)
   }
 }
 
@@ -208,6 +317,11 @@ export async function getFeaturedVideos() {
  * Get videos by category
  */
 export async function getVideosByCategory(categoryId) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for getVideosByCategory')
+    return getLocalVideos().filter(v => v.status === 'published' && v.categoryId === categoryId)
+  }
+
   try {
     const { data, error } = await supabase
       .from('videos')
@@ -219,8 +333,8 @@ export async function getVideosByCategory(categoryId) {
     if (error) throw error
     return data.map(convertVideoFromDB)
   } catch (error) {
-    console.error('Error fetching videos by category:', error)
-    return []
+    console.error('Error fetching videos by category from Supabase, using localStorage fallback:', error)
+    return getLocalVideos().filter(v => v.status === 'published' && v.categoryId === categoryId)
   }
 }
 
@@ -228,6 +342,16 @@ export async function getVideosByCategory(categoryId) {
  * Search videos
  */
 export async function searchVideos(query) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for searchVideos')
+    const videos = getLocalVideos().filter(v => v.status === 'published')
+    const searchTerm = query.toLowerCase()
+    return videos.filter(v =>
+      v.title.toLowerCase().includes(searchTerm) ||
+      v.description.toLowerCase().includes(searchTerm)
+    )
+  }
+
   try {
     const searchTerm = query.toLowerCase()
     const { data, error } = await supabase
@@ -240,8 +364,13 @@ export async function searchVideos(query) {
     if (error) throw error
     return data.map(convertVideoFromDB)
   } catch (error) {
-    console.error('Error searching videos:', error)
-    return []
+    console.error('Error searching videos in Supabase, using localStorage fallback:', error)
+    const videos = getLocalVideos().filter(v => v.status === 'published')
+    const searchTerm = query.toLowerCase()
+    return videos.filter(v =>
+      v.title.toLowerCase().includes(searchTerm) ||
+      v.description.toLowerCase().includes(searchTerm)
+    )
   }
 }
 
@@ -249,6 +378,12 @@ export async function searchVideos(query) {
  * Check if video already exists (by YouTube video ID)
  */
 export async function videoExists(youtubeVideoId) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for videoExists')
+    const videos = getLocalVideos()
+    return videos.some(v => v.youtubeVideoId === youtubeVideoId)
+  }
+
   try {
     const { data, error } = await supabase
       .from('videos')
@@ -259,8 +394,9 @@ export async function videoExists(youtubeVideoId) {
     if (error && error.code !== 'PGRST116') throw error
     return !!data
   } catch (error) {
-    console.error('Error checking video existence:', error)
-    return false
+    console.error('Error checking video existence in Supabase, using localStorage fallback:', error)
+    const videos = getLocalVideos()
+    return videos.some(v => v.youtubeVideoId === youtubeVideoId)
   }
 }
 
@@ -268,6 +404,17 @@ export async function videoExists(youtubeVideoId) {
  * Get video statistics
  */
 export async function getVideoStats() {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for getVideoStats')
+    const videos = getLocalVideos()
+    return {
+      total: videos.length,
+      published: videos.filter(v => v.status === 'published').length,
+      drafts: videos.filter(v => v.status === 'draft').length,
+      featured: videos.filter(v => v.featured).length
+    }
+  }
+
   try {
     const { data: allVideos, error: allError } = await supabase
       .from('videos')
@@ -282,15 +429,26 @@ export async function getVideoStats() {
       featured: allVideos.filter(v => v.featured).length
     }
   } catch (error) {
-    console.error('Error fetching video stats:', error)
-    return { total: 0, published: 0, drafts: 0, featured: 0 }
+    console.error('Error fetching video stats from Supabase, using localStorage fallback:', error)
+    const videos = getLocalVideos()
+    return {
+      total: videos.length,
+      published: videos.filter(v => v.status === 'published').length,
+      drafts: videos.filter(v => v.status === 'draft').length,
+      featured: videos.filter(v => v.featured).length
+    }
   }
 }
 
 /**
- * Get categories from Supabase
+ * Get categories from Supabase or fallback to localStorage
  */
 export async function getCategories() {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for getCategories')
+    return getLocalCategories()
+  }
+
   try {
     const { data, error } = await supabase
       .from('categories')
@@ -300,15 +458,29 @@ export async function getCategories() {
     if (error) throw error
     return data.map(convertCategoryFromDB)
   } catch (error) {
-    console.error('Error fetching categories:', error)
-    return []
+    console.error('Error fetching categories from Supabase, using localStorage fallback:', error)
+    return getLocalCategories()
   }
 }
 
 /**
- * Add a new category to Supabase
+ * Add a new category to Supabase or fallback to localStorage
  */
 export async function addCategory(categoryData) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for addCategory')
+    const categories = getLocalCategories()
+    const newCategory = {
+      id: generateId(),
+      ...categoryData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+    categories.push(newCategory)
+    saveLocalCategories(categories)
+    return newCategory
+  }
+
   try {
     const dbData = convertCategoryToDB(categoryData)
     const { data, error } = await supabase
@@ -320,15 +492,31 @@ export async function addCategory(categoryData) {
     if (error) throw error
     return convertCategoryFromDB(data)
   } catch (error) {
-    console.error('Error adding category:', error)
-    throw error
+    console.error('Error adding category to Supabase, using localStorage fallback:', error)
+    return addCategory(categoryData) // Fallback to localStorage
   }
 }
 
 /**
- * Update a category in Supabase
+ * Update a category in Supabase or fallback to localStorage
  */
 export async function updateCategory(categoryId, categoryData) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for updateCategory')
+    const categories = getLocalCategories()
+    const index = categories.findIndex(c => c.id === categoryId)
+    if (index !== -1) {
+      categories[index] = {
+        ...categories[index],
+        ...categoryData,
+        updatedAt: new Date().toISOString()
+      }
+      saveLocalCategories(categories)
+      return categories[index]
+    }
+    return null
+  }
+
   try {
     const dbData = convertCategoryToDB(categoryData)
     const { data, error } = await supabase
@@ -341,15 +529,23 @@ export async function updateCategory(categoryId, categoryData) {
     if (error) throw error
     return convertCategoryFromDB(data)
   } catch (error) {
-    console.error('Error updating category:', error)
-    throw error
+    console.error('Error updating category in Supabase, using localStorage fallback:', error)
+    return updateCategory(categoryId, categoryData) // Fallback to localStorage
   }
 }
 
 /**
- * Delete a category from Supabase
+ * Delete a category from Supabase or fallback to localStorage
  */
 export async function deleteCategory(categoryId) {
+  if (!isSupabaseConfigured) {
+    console.log('Using localStorage fallback for deleteCategory')
+    const categories = getLocalCategories()
+    const filteredCategories = categories.filter(c => c.id !== categoryId)
+    saveLocalCategories(filteredCategories)
+    return true
+  }
+
   try {
     const { error } = await supabase
       .from('categories')
@@ -359,8 +555,8 @@ export async function deleteCategory(categoryId) {
     if (error) throw error
     return true
   } catch (error) {
-    console.error('Error deleting category:', error)
-    throw error
+    console.error('Error deleting category from Supabase, using localStorage fallback:', error)
+    return deleteCategory(categoryId) // Fallback to localStorage
   }
 }
 
@@ -368,6 +564,11 @@ export async function deleteCategory(categoryId) {
  * Get category by ID
  */
 export async function getCategoryById(categoryId) {
+  if (!isSupabaseConfigured) {
+    const categories = getLocalCategories()
+    return categories.find(c => c.id === categoryId) || null
+  }
+
   try {
     const { data, error } = await supabase
       .from('categories')
@@ -387,6 +588,11 @@ export async function getCategoryById(categoryId) {
  * Migrate localStorage videos to Supabase
  */
 export async function migrateLocalStorageVideos() {
+  if (!isSupabaseConfigured) {
+    console.log('Supabase not configured, skipping migration')
+    return { success: false, message: 'Supabase not configured' }
+  }
+
   try {
     const localVideos = getLocalVideos()
     if (localVideos.length === 0) {
@@ -426,8 +632,11 @@ export async function migrateLocalStorageVideos() {
  * Check if localStorage has videos to migrate
  */
 export function hasLocalStorageVideos() {
+  if (!isSupabaseConfigured) {
+    return false // Don't show migration if Supabase isn't configured
+  }
   const localVideos = getLocalVideos()
-  return localVideos.length > 0
+  return localVideos.length > 1 // Only show if there are videos beyond the initial one
 }
 
 /**
@@ -436,5 +645,5 @@ export function hasLocalStorageVideos() {
 export function initializeVideoData() {
   // This function is kept for compatibility but no longer initializes localStorage
   // The database is initialized by the SQL schema
-  console.log('Video data initialization: Using Supabase database')
+  console.log('Video data initialization: Using Supabase database or localStorage fallback')
 }

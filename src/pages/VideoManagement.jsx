@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import VideoForm from '../components/VideoForm'
 import BulkVideoImport from '../components/BulkVideoImport'
 import VideoModal from '../components/VideoModal'
+import { isSupabaseConfigured } from '../lib/supabase'
 import {
   getVideos,
   addVideo,
@@ -10,9 +11,7 @@ import {
   deleteVideo,
   getVideoStats,
   getCategories,
-  videoExists,
-  hasLocalStorageVideos,
-  migrateLocalStorageVideos
+  videoExists
 } from '../utils/videoStorage'
 import { formatDate } from '../utils/videoUtils'
 
@@ -30,12 +29,9 @@ function VideoManagement() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [showMigration, setShowMigration] = useState(false)
-  const [migrationResult, setMigrationResult] = useState(null)
 
   useEffect(() => {
     loadData()
-    checkForMigration()
   }, [])
 
   useEffect(() => {
@@ -59,12 +55,6 @@ function VideoManagement() {
       setError('Failed to load data. Please check your connection.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const checkForMigration = () => {
-    if (hasLocalStorageVideos()) {
-      setShowMigration(true)
     }
   }
 
@@ -168,22 +158,6 @@ function VideoManagement() {
     setView('list')
   }
 
-  const handleMigration = async () => {
-    try {
-      setLoading(true)
-      const result = await migrateLocalStorageVideos()
-      setMigrationResult(result)
-      if (result.success) {
-        await loadData()
-      }
-    } catch (err) {
-      console.error('Error during migration:', err)
-      setMigrationResult({ success: false, error: err.message })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-8">
@@ -191,46 +165,26 @@ function VideoManagement() {
         <p className="text-gray-600">Manage YouTube videos, categories, and content</p>
       </div>
 
-      {/* Migration Notice */}
-      {showMigration && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
-          <h3 className="text-lg font-semibold text-yellow-800 mb-2">Local Storage Videos Detected</h3>
-          <p className="text-yellow-700 mb-4">
-            You have videos stored in your browser's local storage. These need to be migrated to the cloud database so they can be shared across all devices.
+      {/* Supabase Configuration Notice */}
+      {!isSupabaseConfigured && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold text-blue-800 mb-2">Supabase Not Configured</h3>
+          <p className="text-blue-700 mb-4">
+            The video system is currently running in fallback mode using localStorage. To enable cloud database sharing across devices, configure your Supabase credentials in the .env file.
           </p>
-          {migrationResult ? (
-            <div className="bg-white rounded-lg p-4">
-              <h4 className="font-semibold text-navy-900 mb-2">Migration Results</h4>
-              <div className="grid grid-cols-3 gap-4 mb-2">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{migrationResult.migrated}</div>
-                  <div className="text-sm text-gray-600">Migrated</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">{migrationResult.duplicates}</div>
-                  <div className="text-sm text-gray-600">Duplicates</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">{migrationResult.errors}</div>
-                  <div className="text-sm text-gray-600">Errors</div>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowMigration(false)}
-                className="mt-4 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-white font-medium rounded-lg transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleMigration}
-              disabled={loading}
-              className="px-6 py-3 bg-electric-600 hover:bg-electric-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Migrating...' : 'Import Existing Videos to Cloud'}
-            </button>
-          )}
+          <div className="bg-white rounded-lg p-4">
+            <h4 className="font-semibold text-navy-900 mb-2">Setup Instructions:</h4>
+            <ol className="list-decimal list-inside text-sm text-gray-700 space-y-2">
+              <li>Create a free Supabase project at <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">supabase.com</a></li>
+              <li>Copy your Project URL and anon/public key from Settings → API</li>
+              <li>Add them to your .env file (see .env.example for format)</li>
+              <li>Run the SQL schema from supabase/schema.sql in Supabase SQL Editor</li>
+              <li>Restart the development server</li>
+            </ol>
+            <p className="text-xs text-gray-500 mt-3">
+              See SUPABASE_SETUP.md for detailed instructions.
+            </p>
+          </div>
         </div>
       )}
 
