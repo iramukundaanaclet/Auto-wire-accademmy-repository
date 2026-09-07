@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -9,6 +10,38 @@ function Login() {
   const [error, setError] = useState('')
   const { signIn } = useAuth()
   const navigate = useNavigate()
+
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Authentication Not Available
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Please configure Supabase credentials to enable admin login
+            </p>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">Setup Instructions:</h3>
+            <ol className="list-decimal list-inside text-sm text-gray-700 space-y-2">
+              <li>Create a free Supabase project at <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">supabase.com</a></li>
+              <li>Copy your Project URL and anon/public key from Settings → API</li>
+              <li>Add them to your .env file (see .env.example for format)</li>
+              <li>Run the SQL schema from supabase/schema.sql in Supabase SQL Editor</li>
+              <li>Restart the development server</li>
+            </ol>
+          </div>
+          <div className="text-center">
+            <Link to="/" className="text-sm text-indigo-600 hover:text-indigo-500">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
