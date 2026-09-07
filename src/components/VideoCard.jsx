@@ -11,7 +11,7 @@ function VideoCard({ video, category, onWatch }) {
           <div className="w-full h-full bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center">
             <div className="text-center text-white p-4">
               <div className="text-2xl font-bold mb-2">{video.title}</div>
-              <div className="text-sm text-gray-300">{category?.name || 'Uncategorized'}</div>
+              <div className="text-sm text-gray-300">{category?.name || video.isFromPlaylist ? 'YouTube Playlist' : 'Uncategorized'}</div>
             </div>
           </div>
         ) : (
@@ -34,11 +34,16 @@ function VideoCard({ video, category, onWatch }) {
             Featured
           </div>
         )}
+        {video.isFromPlaylist && (
+          <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
+            YouTube
+          </div>
+        )}
       </div>
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
           <span className="px-2 py-1 bg-electric-100 text-electric-700 rounded-full text-xs font-medium">
-            {category?.name || 'Uncategorized'}
+            {category?.name || video.isFromPlaylist ? 'YouTube Playlist' : 'Uncategorized'}
           </span>
           <span className="text-xs text-gray-500">{formatDate(video.createdAt)}</span>
         </div>
