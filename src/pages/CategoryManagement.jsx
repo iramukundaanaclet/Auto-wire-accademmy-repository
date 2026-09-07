@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getCategories, addCategory, updateCategory, deleteCategory } from '../utils/videoStorage'
 import { generateId } from '../utils/videoUtils'
+import { useAuth } from '../contexts/AuthContext'
 
 function CategoryManagement() {
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [categories, setCategories] = useState([])
   const [view, setView] = useState('list') // 'list', 'add', 'edit'
   const [selectedCategory, setSelectedCategory] = useState(null)
@@ -80,11 +83,29 @@ function CategoryManagement() {
     setView('edit')
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (err) {
+      console.error('Error signing out:', err)
+      alert('Failed to sign out. Please try again.')
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-navy-900 mb-2">Category Management</h1>
-        <p className="text-gray-600">Manage video categories for organization</p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-navy-900 mb-2">Category Management</h1>
+          <p className="text-gray-600">Manage video categories for organization</p>
+        </div>
+        <button
+          onClick={handleSignOut}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Sign Out
+        </button>
       </div>
 
       {/* Statistics */}

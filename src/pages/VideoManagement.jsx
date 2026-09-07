@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import VideoForm from '../components/VideoForm'
 import BulkVideoImport from '../components/BulkVideoImport'
 import VideoModal from '../components/VideoModal'
 import { isSupabaseConfigured } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import {
   getVideos,
   addVideo,
@@ -16,6 +17,8 @@ import {
 import { formatDate } from '../utils/videoUtils'
 
 function VideoManagement() {
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [videos, setVideos] = useState([])
   const [categories, setCategories] = useState([])
   const [stats, setStats] = useState({ total: 0, published: 0, drafts: 0, featured: 0 })
@@ -158,11 +161,29 @@ function VideoManagement() {
     setView('list')
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (err) {
+      console.error('Error signing out:', err)
+      alert('Failed to sign out. Please try again.')
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-navy-900 mb-2">Video Management</h1>
-        <p className="text-gray-600">Manage YouTube videos, categories, and content</p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-navy-900 mb-2">Video Management</h1>
+          <p className="text-gray-600">Manage YouTube videos, categories, and content</p>
+        </div>
+        <button
+          onClick={handleSignOut}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Sign Out
+        </button>
       </div>
 
       {/* Supabase Configuration Notice */}

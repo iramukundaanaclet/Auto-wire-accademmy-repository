@@ -1,7 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Suspense, useState, useEffect } from 'react'
+import { AuthProvider } from './contexts/AuthContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import ProtectedRoute from './components/ProtectedRoute'
 import Home from './pages/Home'
 import Learn from './pages/Learn'
 import ModuleDetail from './pages/ModuleDetail'
@@ -15,6 +17,7 @@ import Vehicles from './pages/Vehicles'
 import Videos from './pages/Videos'
 import VideoManagement from './pages/VideoManagement'
 import CategoryManagement from './pages/CategoryManagement'
+import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 
 function App() {
@@ -37,36 +40,47 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar />
-        <main className="flex-grow">
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-electric-600"></div>
-            </div>
-          }>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/learn" element={<Learn />} />
-              <Route path="/learn/:moduleId" element={<ModuleDetail />} />
-              <Route path="/wiring-lab" element={<WiringLab />} />
-              <Route path="/diagnostics" element={<DiagnosticsLab />} />
-              <Route path="/diagrams" element={<WiringDiagrams />} />
-              <Route path="/quiz" element={<Quiz />} />
-              <Route path="/progress" element={<Progress />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/vehicles" element={<Vehicles />} />
-              <Route path="/videos" element={<Videos />} />
-              <Route path="/admin/videos" element={<VideoManagement />} />
-              <Route path="/admin/categories" element={<CategoryManagement />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen flex flex-col bg-gray-50">
+          <Navbar />
+          <main className="flex-grow">
+            <Suspense fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-electric-600"></div>
+              </div>
+            }>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/learn" element={<Learn />} />
+                <Route path="/learn/:moduleId" element={<ModuleDetail />} />
+                <Route path="/wiring-lab" element={<WiringLab />} />
+                <Route path="/diagnostics" element={<DiagnosticsLab />} />
+                <Route path="/diagrams" element={<WiringDiagrams />} />
+                <Route path="/quiz" element={<Quiz />} />
+                <Route path="/progress" element={<Progress />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/vehicles" element={<Vehicles />} />
+                <Route path="/videos" element={<Videos />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/admin/videos" element={
+                  <ProtectedRoute>
+                    <VideoManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/categories" element={
+                  <ProtectedRoute>
+                    <CategoryManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </main>
+          <Footer />
+        </div>
+      </Router>
+    </AuthProvider>
   )
 }
 
