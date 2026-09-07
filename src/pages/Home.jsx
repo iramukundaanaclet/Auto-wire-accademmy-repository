@@ -152,6 +152,28 @@ function Home() {
         </div>
       </section>
 
+      {/* YouTube Video Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-white mb-4">EV Electrical Systems BASICS</h2>
+          <p className="text-gray-300 max-w-2xl mx-auto">
+            Watch this comprehensive introduction to electric vehicle electrical systems. Learn the fundamentals of EV power distribution, battery systems, and charging infrastructure.
+          </p>
+        </div>
+        <div className="w-full max-w-4xl mx-auto">
+          <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl">
+            <iframe
+              src="https://www.youtube.com/embed/mNOYS-duUJY"
+              title="EV Electrical Systems BASICS"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="w-full h-full"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
