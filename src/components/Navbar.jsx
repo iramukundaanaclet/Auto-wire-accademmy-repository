@@ -11,7 +11,6 @@ function Navbar() {
     { name: 'Wiring Lab', path: '/wiring-lab' },
     { name: 'Diagnostics', path: '/diagnostics' },
     { name: 'Diagrams', path: '/diagrams' },
-    { name: 'Videos', path: '/videos' },
     { name: 'Quiz', path: '/quiz' },
     { name: 'Progress', path: '/progress' },
     { name: 'Vehicles', path: '/vehicles' },
