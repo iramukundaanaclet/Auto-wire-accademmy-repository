@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { initialVideos } from '../data/videos'
 
 function Home() {
   const [featuredVideos, setFeaturedVideos] = useState([])
@@ -7,19 +8,6 @@ function Home() {
   useEffect(() => {
     // Load featured videos from static data
     try {
-      const initialVideos = [
-        {
-          id: 'ev-electrical-basics',
-          youtubeId: 'mNOYS-duUJY',
-          title: 'EV Electrical Systems BASICS',
-          description: 'An introductory video about EV electrical systems and their basic components.',
-          thumbnail: 'https://img.youtube.com/vi/mNOYS-duUJY/maxresdefault.jpg',
-          embedUrl: 'https://www.youtube.com/embed/mNOYS-duUJY?rel=0&modestbranding=1&playsinline=1',
-          category: 'Electrical System',
-          featured: true,
-          createdAt: '2026-09-07T00:00:00.000Z'
-        }
-      ]
       const featured = initialVideos.filter(v => v.featured).slice(0, 3)
       setFeaturedVideos(featured)
     } catch (error) {
