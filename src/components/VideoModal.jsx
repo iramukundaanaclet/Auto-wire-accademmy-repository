@@ -1,9 +1,18 @@
 import { useState } from 'react'
 import VideoPlayer from './VideoPlayer'
-import { formatDate } from '../utils/videoUtils'
 
 function VideoModal({ video, category, relatedVideos, onClose, onRelatedVideoClick }) {
   const [imageError, setImageError] = useState(false)
+
+  const formatDate = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -26,7 +35,7 @@ function VideoModal({ video, category, relatedVideos, onClose, onRelatedVideoCli
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
             <span className="px-3 py-1 bg-electric-100 text-electric-700 rounded-full text-sm font-medium">
-              {category?.name || 'Uncategorized'}
+              {category?.name || video.category || 'Uncategorized'}
             </span>
             {video.featured && (
               <span className="px-3 py-1 bg-accent-500 text-white rounded-full text-sm font-medium">
@@ -56,7 +65,7 @@ function VideoModal({ video, category, relatedVideos, onClose, onRelatedVideoCli
                         </div>
                       ) : (
                         <img
-                          src={relatedVideo.thumbnailUrl}
+                          src={relatedVideo.thumbnail}
                           alt={relatedVideo.title}
                           className="w-full h-full object-cover"
                           onError={() => setImageError(true)}
