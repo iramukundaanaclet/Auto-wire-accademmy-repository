@@ -9,6 +9,7 @@ import {
   getCategories
 } from '../utils/videoStorage'
 import { fetchPlaylistVideos, isYouTubeAPIConfigured } from '../services/youtubeService'
+import { checkEnvironmentConfiguration, getEnvironmentIssues } from '../utils/envDiagnostics'
 
 function Videos() {
   const [videos, setVideos] = useState([])
@@ -38,6 +39,15 @@ function Videos() {
       setLoading(true)
       setError(null)
 
+      // Log environment diagnostics
+      const envDiagnostics = checkEnvironmentConfiguration()
+      console.log('Environment diagnostics:', envDiagnostics)
+
+      const envIssues = getEnvironmentIssues()
+      if (envIssues.length > 0) {
+        console.warn('Environment configuration issues:', envIssues)
+      }
+
       // Load Supabase videos
       const [published, featured] = await Promise.all([
         getPublishedVideos(),
@@ -58,6 +68,8 @@ function Videos() {
           console.error('Error loading playlist videos:', playlistError)
           // Don't fail the entire page if playlist fails
           setPlaylistVideos([])
+          // Show error message for playlist loading
+          setError(`YouTube playlist loading failed: ${playlistError.message}. Database videos will still work.`)
         }
       }
     } catch (err) {

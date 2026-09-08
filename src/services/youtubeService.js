@@ -12,16 +12,24 @@ export async function fetchPlaylistVideos() {
   }
 
   try {
+    console.log('Fetching YouTube playlist:', PLAYLIST_ID)
+    console.log('API Key configured:', YOUTUBE_API_KEY ? 'Yes' : 'No')
+
     // Fetch playlist items
     const playlistResponse = await fetch(
       `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${PLAYLIST_ID}&maxResults=50&key=${YOUTUBE_API_KEY}`
     )
 
+    console.log('YouTube API response status:', playlistResponse.status)
+
     if (!playlistResponse.ok) {
-      throw new Error(`YouTube API error: ${playlistResponse.statusText}`)
+      const errorData = await playlistResponse.json().catch(() => ({}))
+      console.error('YouTube API error details:', errorData)
+      throw new Error(`YouTube API error: ${playlistResponse.statusText} - ${JSON.stringify(errorData)}`)
     }
 
     const playlistData = await playlistResponse.json()
+    console.log('YouTube API response items count:', playlistData.items?.length || 0)
 
     if (!playlistData.items || playlistData.items.length === 0) {
       console.log('No videos found in playlist')
@@ -57,6 +65,7 @@ export async function fetchPlaylistVideos() {
         }
       })
 
+    console.log('Successfully fetched playlist videos:', videos.length)
     return videos
   } catch (error) {
     console.error('Error fetching YouTube playlist:', error)
