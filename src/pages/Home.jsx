@@ -1,31 +1,15 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { getFeaturedVideos, getCategories } from '../utils/videoStorage'
+import { initialVideos, categories } from '../data/videos'
 
 function Home() {
   const [featuredVideos, setFeaturedVideos] = useState([])
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadFeaturedVideos()
+    // Load featured videos from static data
+    const featured = initialVideos.filter(v => v.featured).slice(0, 3)
+    setFeaturedVideos(featured)
   }, [])
-
-  const loadFeaturedVideos = async () => {
-    try {
-      setLoading(true)
-      const [featured, cats] = await Promise.all([
-        getFeaturedVideos(),
-        getCategories()
-      ])
-      setFeaturedVideos(featured.slice(0, 3)) // Show only top 3 featured videos
-      setCategories(cats)
-    } catch (error) {
-      console.error('Error loading featured videos:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
   return (
     <div className="bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
       {/* Hero Section */}

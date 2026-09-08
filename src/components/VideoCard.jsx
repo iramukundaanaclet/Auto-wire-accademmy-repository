@@ -1,8 +1,20 @@
 import { useState } from 'react'
-import { formatDate } from '../utils/videoUtils'
 
 function VideoCard({ video, category, onWatch }) {
   const [imageError, setImageError] = useState(false)
+
+  const categoryName = category?.name || video.category || 'Uncategorized'
+  const thumbnailUrl = video.thumbnailUrl || video.thumbnail
+
+  const formatDate = (dateString) => {
+    if (!dateString) return ''
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border border-gray-100">
@@ -11,12 +23,12 @@ function VideoCard({ video, category, onWatch }) {
           <div className="w-full h-full bg-gradient-to-br from-navy-600 to-navy-800 flex items-center justify-center">
             <div className="text-center text-white p-4">
               <div className="text-2xl font-bold mb-2">{video.title}</div>
-              <div className="text-sm text-gray-300">{category?.name || video.isFromPlaylist ? 'YouTube Playlist' : 'Uncategorized'}</div>
+              <div className="text-sm text-gray-300">{categoryName}</div>
             </div>
           </div>
         ) : (
           <img
-            src={video.thumbnailUrl}
+            src={thumbnailUrl}
             alt={video.title}
             className="w-full h-full object-cover"
             onError={() => setImageError(true)}
@@ -34,16 +46,11 @@ function VideoCard({ video, category, onWatch }) {
             Featured
           </div>
         )}
-        {video.isFromPlaylist && (
-          <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
-            YouTube
-          </div>
-        )}
       </div>
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
           <span className="px-2 py-1 bg-electric-100 text-electric-700 rounded-full text-xs font-medium">
-            {category?.name || video.isFromPlaylist ? 'YouTube Playlist' : 'Uncategorized'}
+            {categoryName}
           </span>
           <span className="text-xs text-gray-500">{formatDate(video.createdAt)}</span>
         </div>
