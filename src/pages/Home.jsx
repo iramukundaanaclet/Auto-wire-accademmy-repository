@@ -1,18 +1,14 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { initialVideos } from '../data/videos'
+import { initialVideos, categories } from '../data/videos'
 
 function Home() {
   const [featuredVideos, setFeaturedVideos] = useState([])
 
   useEffect(() => {
     // Load featured videos from static data
-    try {
-      const featured = initialVideos.filter(v => v.featured).slice(0, 3)
-      setFeaturedVideos(featured)
-    } catch (error) {
-      console.error('Error loading videos:', error)
-    }
+    const featured = initialVideos.filter(v => v.featured).slice(0, 3)
+    setFeaturedVideos(featured)
   }, [])
   return (
     <div className="bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900">
